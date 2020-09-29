@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Article</title>
+        <link rel="stylesheet"  type="text/css" href="../assets/css/index.css">
+        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <script>
+            $(document).ready(function(){
+                $("#modifyUser").click(function(){
+                    $.ajax({
+                        type: "POST",
+                        url: "http://localhost:8081/editUserInfo",
+                        data: {
+                            firstname: $("#firstname").val(),
+                            lastname: $("#lastname").val(),
+                            age: $("#age").val(),
+                            bicycle: $("#bicycle").val()
+                        },
+                        success: function(){
+                            $("#inputStatus")
+                                .text("Successfully updated")
+                                .css("color", "green");
+                            setTimeout(function(){
+                                $("#inputStatus").css("visibility", "hidden");
+                            }, 2000); 
+                        }
+                    });           
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <p>I am {{.nickname}}</p>
+        <form id="inputForm">
+            <div class="usersInput">
+                <label for="firstname">First Name: </label>
+                <input id ="firstname" class="usersInput" name="firstname" value="{{.firstname}}">
+            </div> 
+            <div class="usersInput">
+                <label for="lastname">Last Name: </label>
+                <input id="lastname" class="usersInput" name="lastname" value="{{.lastname}}">
+            </div> 
+            <div class="usersInput">
+                <label for="age">Age: </label>
+                <input id="age" class="usersInput" type="number" name="age" min="1" max="100" value="{{.age}}">
+            </div> 
+            <div class="usersInput">
+                <label for="bicycle">Bicycle: </label>
+                <input id="bicycle" class="usersInput" name="bicycle" value="{{.bicycle}}">
+            </div> 
+            <p id="inputStatus">Not modified</p>
+            <input id="modifyUser" type="button" value="Modify info">
+        </form>
+    </body>
+</html>

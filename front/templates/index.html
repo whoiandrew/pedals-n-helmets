@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Pedals'n'helmets</title>
+        <link rel="stylesheet"  type="text/css" href="../assets/css/index.css">
+        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <script>
+            $(document).ready(function(){
+                $('#articles div').sort(function(a,b) {
+                    return new Date(b.dataset.date) - new Date(a.dataset.date);
+                }).appendTo('#articles');
+
+                $("#loginBtn").click(function(){
+                    $("#loginModal").show();
+                });
+                $("#closeLogin").click(function(){
+                    $("#loginModal").hide();
+                });
+                $("#registerBtn").click(function(){
+                    $("#registerModal").show();
+                });
+                $("#closeReg").click(function(){
+                    $("#registerModal").hide();
+                });
+                $("#addArticleButton").click(function(){
+                    const title = $("#titleInput").val()
+                    if (!title.replace(/\s/g, '').length){
+                        alert("Empty title!")
+                    }
+                    else {
+                        $.ajax({
+                            type: "POST",
+                            url: "http://localhost:8081/addArticle",
+                            data: {
+                                author: $("#loggedUserNickname").attr("data-nickname"),
+                                title: $("#titleInput").val(),
+                                content: $("#contentInput").val()
+                            },
+                            dataType: "json",
+                            success: function(data) {
+                                $("#articles").prepend(`<div class="article"><a href="/article/${data.id}"><h2>${$("#titleInput").val()}</h2></a><p>${data.prettyTime}</p><p>created by ${$("#loggedUserNickname").attr("data-nickname")}</p><p>${$("#contentInput").val()}</p></div>`);
+                            }
+                        });           
+                    }
+                });
+                
+            });
+        </script>
+    </head>
+    <body>
+        <header id="topbar">
+            <div id="logo">
+                <h1 id="title">Pedals'n'helmets</h1>
+            </div>
+            <!-- <div id="welcome">
+                <p>Hi, friend! We are tiny cycling network from Kyiv, Ukraine.</p>
+                <p>Here you can ask any questions about bicycles, cycling events, bike parts etc.</p>
+                <p>By the way, feel free to discuss topics in our resource, your opinion does matter.</p>
+            </div> -->
+            <div id="btns">
+                {{if .nickname}}
+                    <form action="http://localhost:8081/userPage" method="post">
+                        <button class="inpBtn" type="submit" data-nickname="{{.nickname}}" id="loggedUserNickname">{{.nickname}}</button>
+                    </form>
+                    <form style="display: inline;" action="http://localhost:8081/logout" method="post">
+                        <button id="logoutBtn" class="inpBtn" type="submit">Log Out</button>
+                    </form>
+                {{else}}
+                    <button id="loginBtn" class="inpBtn">Sign In</button>
+                    <button id="registerBtn" class="inpBtn" onclick="showModal('registerModal', 'registerBtn', 'closeReg')">Sign Up</button>
+                {{end}}
+                {{if .isAdmin}}
+                <form style="display: inline;" action="http://localhost:8081/adminPanel" method="post">
+                    <button id="adminBtn" class="inpBtn" type="submit">adminka</button>
+                </form>
+                {{end}}
+            </div>
+        </header>
+        <aside>
+            <div id="loginModal" class="modal">
+                <div class="modal-content">
+                    <span id="closeLogin" class="close">&times;</span>
+                    <p>Login</p>
+                    <form action="http://localhost:8081/login" method="post" onsubmit="checkLoginForm(this)">
+                        <div class="formItem">
+                            <label class="labelItem" for="nickname">Nickname: </label>
+                            <input class="inputItem" name="nickname"/>
+                        </div>
+                        <div class="formItem">
+                            <label class="labelItem" for="password">Password: </label>
+                            <input class="inputItem" type="password" name="password"/>
+                        </div>
+                        <div class="formItem">
+                            <input class ="button" type="submit" value="Submit"/>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div id="registerModal" class="modal">
+                <div class="modal-content">
+                    <span id="closeReg" class="close">&times;</span>
+                    <p>Register</p>
+                    <form action="http://localhost:8081/register" method="post" onsubmit="checkRegisterForm(this)">
+                        <div class="formItem">
+                            <label class="labelItem" for="nickname">Nickname: </label>
+                            <input class="inputItem" name="nickname"/>
+                        </div>
+                        <div class="formItem">
+                            <label class="labelItem" for="password">Password: </label>
+                            <input class="inputItem" type="password" name="password"/>
+                        </div>
+                        <div class="formItem">
+                            <label class="labelItem" for="pwd2">Repeat Password: </label>
+                            <input class="inputItem" type="password" name="pwd2"/>
+                        </div>
+                        <div class="formItem">
+                            <input class ="button" type="submit" value="Submit"/>
+                        </div>
+                    </form>
+                </div>
+            </div>  
+        </aside>
+        <main id="content">
+            <div>
+                {{if .nickname}}
+                <div id="commentBlock">
+                    <label for="comment">Post as {{.nickname}}: </label>
+                    <input style="display: none" name="author" value="{{.nickname}}"/>
+                    <input id="titleInput" name="title"/>
+                    <input id="contentInput" name="content"/>
+                    <input class ="button" id="addArticleButton" type="button" value="Post article"/>
+                </div>
+                {{end}}
+                <div id="articles">
+                    {{range .payload }}
+                    <div class="article" data-date="{{.CreationTime}}">
+                        <a href="/article/{{.ID}}">
+                        <h2>{{.Title}}</h2>
+                        </a>
+                        <p>{{.PrettyTime}}</p>
+                        <p>created by {{.Author}}</p>
+                        <p>{{.Content}}</p>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+        </main>
+        <footer>
+        </footer>
+       
+    </body>   
+</html>
+

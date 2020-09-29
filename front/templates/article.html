@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Article</title>
+        <link rel="stylesheet"  type="text/css" href="../assets/css/index.css">
+        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <script>
+            $(document).ready(function(){
+                $("#addCommentButton").on("click", function(){
+                    $.ajax({
+                        type: "POST",
+                        url: "http://localhost:8081/addComment",
+                        data: {
+                            articleId: $("#articleId").val(),
+                            author: $("#author").val(),
+                            content: $("#content").val()
+                        },
+                        dataType: "json",
+                        success: function(data) {
+                            $("#comments").prepend(`<div><p>${data.author}</p><p>${data.content}</p><p>${data.prettyTime}</p></div>`);
+                        }
+                    });  
+                             
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <p>{{.title}}</p>
+        <p>{{.content}}</p>
+        {{if .nickname}}
+            <div id="commentBlock">
+                <label for="comment">Leave comment as {{.nickname}}: </label>
+                <input style="display: none" id="articleId" name="articleId" value="{{.articleId}}"/>
+                <input id="author" style="display: none" name="author" value="{{.nickname}}"/>
+                <input id="content" name="content"/>
+                <input id="addCommentButton" class ="button" type="button" value="Comment"/>
+            </div>
+        {{end}}
+        <div id="comments">
+            {{range .comments}}
+                <div class="comment">
+                    <p>{{.Author}}</p>
+                    <p>{{.Content}}</p>
+                    <p>{{.PrettyTime}}</p>
+                </div>
+            {{end}}
+        </div>
+    </body>
+</html>
