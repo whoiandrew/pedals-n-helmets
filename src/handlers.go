@@ -1,12 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"time"
 
 	"github.com/gin-gonic/gin"
-	ai "github.com/night-codes/mgo-ai"
-	"gopkg.in/mgo.v2"
 )
 
 var (
@@ -14,10 +15,12 @@ var (
 )
 
 func login(c *gin.Context) {
-	if valid := authUser(c); valid {
+	if valid, _ := authUser(c); valid {
 		c.Redirect(http.StatusPermanentRedirect, "/")
 	} else {
-		c.String(http.StatusOK, "Wrong login or password")
+		c.HTML(http.StatusOK, "message.html", obj{
+			"message": "Wrong login or passwrod",
+		})
 	}
 
 }
@@ -32,179 +35,169 @@ func logout(c *gin.Context) {
 }
 
 func fullArticle(c *gin.Context) {
-	session, err := mgo.Dial("mongodb://localhost:27017")
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	defer session.Close()
-
 	id := c.Param("id")
-	article := getArticleFromDB(session, id)
-	loggedInUsr, _ := tokensCache.getUser(c, "auth_cookie")
 
-	c.HTML(
-		http.StatusOK,
-		"article.html",
-		obj{"content": article.Content,
-			"title":     article.Title,
-			"nickname":  loggedInUsr.Nickname,
-			"articleId": id,
-			"comments":  getArticleComments(session, id),
-		},
-	)
-}
+	aRespBody := dbHTTPReq("/getArticleFromDB", url.Values{
+		"id": {id},
+	})
 
-func deleteUser(c *gin.Context) {
-	session, err := mgo.Dial("mongodb://localhost:27017")
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	defer session.Close()
+	cRespBody := dbHTTPReq("/getArticleCommentsFromDB", url.Values{
+		"id": {id},
+	})
 
-	id := c.Param("id")
-	deleteUserFromDB(session, id)
-}
+	article, comments := Article{}, []Comment{}
 
-func adminPanel(c *gin.Context) {
-	loggedInUsr, _ := tokensCache.getUser(c, "auth_cookie")
-	if loggedInUsr.IsAdmin {
-		session, err := mgo.Dial("mongodb://localhost:27017")
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
-		defer session.Close()
+	json.Unmarshal(aRespBody, &article)
+	json.Unmarshal(cRespBody, &comments)
 
-		users := getAllUsers(session)
-
+	if loggedInUsr, ok := tokensCache.getUser(c, "auth_cookie"); ok{
 		c.HTML(
 			http.StatusOK,
-			"adminPanel.html",
-			obj{
-				"users": users,
+			"article.html",
+			obj{"content": article.Content,
+				"title":     article.Title,
+				"nickname":  loggedInUsr.Nickname,
+				"articleId": id,
+				"comments":  comments,
 			},
 		)
-	} else {
-		c.Status(http.StatusForbidden)
 	}
+	c.Status(http.StatusOK)
 }
 
 func homePage(c *gin.Context) {
-	session, err := mgo.Dial("mongodb://localhost:27017")
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	defer session.Close()
+	usrFromDB := User{}
+	articles := []Article{}
+
+	articlesData := dbHTTPReq("/getArticlesFromDB", url.Values{})
+	json.Unmarshal(articlesData, &articles)
 
 	usr, isCookieSetted := tokensCache.getUser(c, "auth_cookie")
 
 	if isCookieSetted {
-		usr = getUserFromDB(session, usr.Nickname)
+		usrData := dbHTTPReq("/getUserFromDB", usr.GetURLValues())
+		json.Unmarshal(usrData, &usrFromDB)
 	}
+	
 	c.HTML(
 		http.StatusOK,
 		"index.html",
-		obj{"payload": getArticlesFromDB(session),
-			"nickname": usr.Nickname,
-			"isAdmin":  usr.IsAdmin,
+		obj{"payload": articles,
+			"nickname": usrFromDB.Nickname,
+			"isAdmin":  usrFromDB.IsAdmin,
+			"isModer":  usrFromDB.IsModer,
 		},
 	)
 }
 
 func register(c *gin.Context) {
-	session, err := mgo.Dial("mongodb://localhost:27017")
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	defer session.Close()
-
-	session.SetMode(mgo.Monotonic, true)
 	usr := User{}
 	c.Bind(&usr)
+
 	usr.Password = ToHash(usr.Password)
-	usrFromDB := getUserFromDB(session, usr.Nickname)
+
+	data := dbHTTPReq("/getUserFromDB", url.Values{"nickname": {usr.Nickname}})
+	usrFromDB := User{}
+
+	json.Unmarshal(data, &usrFromDB)
+
 	if (usrFromDB == User{}) {
-		err = addUserToDB(session, usr)
-		if err != nil {
-			fmt.Println(err.Error())
-		}
-		c.String(http.StatusOK, fmt.Sprintf("New user %v found, welcome!", string(usr.Nickname)))
+		dbHTTPReq("/addUserToDB", usr.GetURLValues())
+		c.HTML(http.StatusOK, "message.html", obj{
+			"message": fmt.Sprintf("New user %v found, welcome!", string(usr.Nickname)),
+		})
 	} else {
-		c.String(http.StatusOK, fmt.Sprintf("user %v is already exists", string(usr.Nickname)))
+		c.HTML(http.StatusOK, "message.html", obj{
+			"message": fmt.Sprintf("user %v is already exists", string(usr.Nickname)),
+		})
 	}
 }
 
 func addComment(c *gin.Context) {
-	session, err := mgo.Dial("mongodb://localhost:27017")
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	defer session.Close()
 	comment := Comment{} //req
 	c.Bind(&comment)
-	respComment := addCommentToDB(session, comment)
-	fmt.Printf("comment before%v", comment)
-	fmt.Printf("comment after%v", respComment)
+
+	cTime := time.Now()
+	comment.CreationTime = cTime.Format(time.RFC3339)
+	comment.PrettyTime = cTime.Format("01-02-2006 15:04:05")
+
+	dbHTTPReq("/addCommentToDB", comment.GetURLValues())
+
 	c.JSON(http.StatusOK, obj{
-		"author":     respComment.Author,
-		"content":    respComment.Content,
-		"prettyTime": respComment.PrettyTime,
+		"author":     comment.Author,
+		"content":    comment.Content,
+		"prettyTime": comment.PrettyTime,
 	})
 
 }
 
 func addArticle(c *gin.Context) {
-	session, err := mgo.Dial("mongodb://localhost:27017")
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	defer session.Close()
-
-	ai.Connect(session.DB("main").C("counters"))
-	article := Article{} //req
+	article := Article{}
 	c.Bind(&article)
-	respArticle := addArticleToDB(session, article)
-	fmt.Printf("Article %+v", respArticle)
-	c.JSON(http.StatusOK, obj{"id": respArticle.ID, "prettyTime": respArticle.PrettyTime})
 
+	respArticle := Article{}
+	data := dbHTTPReq("/addArticleToDB", article.GetURLValues())
+
+	json.Unmarshal(data, &respArticle)
+
+	c.JSON(http.StatusOK, obj{"id": respArticle.ID, "prettyTime": respArticle.PrettyTime})
 }
 
 func editUserInfo(c *gin.Context) {
-	session, err := mgo.Dial("mongodb://localhost:27017")
-	if err != nil {
-		panic(err)
-	}
-	defer session.Close()
 	user := User{}
+	if usr, ok := tokensCache.getUser(c, "auth_cookie"); ok {
+		c.Bind(&user)
+		user.Nickname = usr.Nickname
+		fmt.Println(user)
+		dbHTTPReq("/updateUserFromDB", user.GetURLValues())
+		c.Status(http.StatusOK)
+	}
+	c.Status(http.StatusNotFound)
+}
 
-	usr, _ := tokensCache.getUser(c, "auth_cookie")
-
-	user.Nickname = usr.Nickname
-	c.Bind(&user)
-	err = updateUserInDB(session, user)
-	if err != nil {
-		fmt.Println(err.Error())
+func userPage(c *gin.Context) {
+	if usr, ok := tokensCache.getUser(c, "auth_cookie"); ok {
+		respBody := dbHTTPReq("/getUserFromDB", usr.GetURLValues())
+		user := User{}
+		json.Unmarshal(respBody, &user)
+		c.HTML(
+			http.StatusOK,
+			"userPage.html",
+			obj{
+				"nickname":  user.Nickname,
+				"firstname": user.Firstname,
+				"lastname":  user.Lastname,
+				"age":       user.Age,
+				"bicycle":   user.Bicycle,
+			},
+		)
 	}
 	c.Status(http.StatusOK)
 }
 
-func userPage(c *gin.Context) {
-	usr, _ := tokensCache.getUser(c, "auth_cookie")
-	c.HTML(
-		http.StatusOK,
-		"userPage.html",
-		obj{
-			"nickname":  usr.Nickname,
-			"firstname": usr.Firstname,
-			"lastname":  usr.Lastname,
-			"age":       usr.Age,
-			"bicycle":   usr.Bicycle,
-		},
-	)
+func deleteArticle(c *gin.Context) {
+	id, _ := c.GetPostForm("id")
+	dbHTTPReq("/deleteArticleFromDB", url.Values{"id": {id}})
+	c.Status(http.StatusOK)
+}
+
+func editArticle(c *gin.Context) {
+	id := c.Param("id")
+	content, _ := c.GetPostForm("content")
+	dbHTTPReq("/editArticleFromDB", url.Values{"id": {id}, "content": {content}})
+	c.Status(http.StatusOK)
+}
+
+func rateArticle(c *gin.Context) {
+	if usr, ok := tokensCache.getUser(c, "auth_cookie"); ok {
+		id, _ := c.GetPostForm("id")
+		rate, _ := c.GetPostForm("rate")
+	
+		dbHTTPReq("/updateRatesFromDB", url.Values{
+			"id":       {id},
+			"rate":     {rate},
+			"nickname": {usr.Nickname},
+		})
+	}
+	c.Status(http.StatusOK)
 }

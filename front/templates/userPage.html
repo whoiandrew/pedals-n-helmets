@@ -4,31 +4,8 @@
         <meta charset="UTF-8">
         <title>Article</title>
         <link rel="stylesheet"  type="text/css" href="../assets/css/index.css">
-        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-        <script>
-            $(document).ready(function(){
-                $("#modifyUser").click(function(){
-                    $.ajax({
-                        type: "POST",
-                        url: "http://localhost:8081/editUserInfo",
-                        data: {
-                            firstname: $("#firstname").val(),
-                            lastname: $("#lastname").val(),
-                            age: $("#age").val(),
-                            bicycle: $("#bicycle").val()
-                        },
-                        success: function(){
-                            $("#inputStatus")
-                                .text("Successfully updated")
-                                .css("color", "green");
-                            setTimeout(function(){
-                                $("#inputStatus").css("visibility", "hidden");
-                            }, 2000); 
-                        }
-                    });           
-                });
-            });
-        </script>
+        <script type="text/javascript" src="../assets/jquery-3.5.1.js"></script>
+        <script type="text/javascript" src="../assets/scripts/userPage.js"></script>
     </head>
     <body>
         <p>I am {{.nickname}}</p>

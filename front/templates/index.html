@@ -4,49 +4,8 @@
         <meta charset="UTF-8">
         <title>Pedals'n'helmets</title>
         <link rel="stylesheet"  type="text/css" href="../assets/css/index.css">
-        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-        <script>
-            $(document).ready(function(){
-                $('#articles div').sort(function(a,b) {
-                    return new Date(b.dataset.date) - new Date(a.dataset.date);
-                }).appendTo('#articles');
-
-                $("#loginBtn").click(function(){
-                    $("#loginModal").show();
-                });
-                $("#closeLogin").click(function(){
-                    $("#loginModal").hide();
-                });
-                $("#registerBtn").click(function(){
-                    $("#registerModal").show();
-                });
-                $("#closeReg").click(function(){
-                    $("#registerModal").hide();
-                });
-                $("#addArticleButton").click(function(){
-                    const title = $("#titleInput").val()
-                    if (!title.replace(/\s/g, '').length){
-                        alert("Empty title!")
-                    }
-                    else {
-                        $.ajax({
-                            type: "POST",
-                            url: "http://localhost:8081/addArticle",
-                            data: {
-                                author: $("#loggedUserNickname").attr("data-nickname"),
-                                title: $("#titleInput").val(),
-                                content: $("#contentInput").val()
-                            },
-                            dataType: "json",
-                            success: function(data) {
-                                $("#articles").prepend(`<div class="article"><a href="/article/${data.id}"><h2>${$("#titleInput").val()}</h2></a><p>${data.prettyTime}</p><p>created by ${$("#loggedUserNickname").attr("data-nickname")}</p><p>${$("#contentInput").val()}</p></div>`);
-                            }
-                        });           
-                    }
-                });
-                
-            });
-        </script>
+        <script type="text/javascript" src="../assets/jquery-3.5.1.js"></script>
+        <script type="text/javascript" src="../assets/scripts/index.js"></script>
     </head>
     <body>
         <header id="topbar">
@@ -68,10 +27,10 @@
                     </form>
                 {{else}}
                     <button id="loginBtn" class="inpBtn">Sign In</button>
-                    <button id="registerBtn" class="inpBtn" onclick="showModal('registerModal', 'registerBtn', 'closeReg')">Sign Up</button>
+                    <button id="registerBtn" class="inpBtn">Sign Up</button>
                 {{end}}
                 {{if .isAdmin}}
-                <form style="display: inline;" action="http://localhost:8081/adminPanel" method="post">
+                <form style="display: inline;" action="http://localhost:8083/" method="post">
                     <button id="adminBtn" class="inpBtn" type="submit">adminka</button>
                 </form>
                 {{end}}
@@ -85,14 +44,14 @@
                     <form action="http://localhost:8081/login" method="post" onsubmit="checkLoginForm(this)">
                         <div class="formItem">
                             <label class="labelItem" for="nickname">Nickname: </label>
-                            <input class="inputItem" name="nickname"/>
+                            <input id="loginName" class="inputItem" name="nickname"/>
                         </div>
                         <div class="formItem">
                             <label class="labelItem" for="password">Password: </label>
-                            <input class="inputItem" type="password" name="password"/>
+                            <input id="loginPwd" class="inputItem" type="password" name="password"/>
                         </div>
                         <div class="formItem">
-                            <input class ="button" type="submit" value="Submit"/>
+                            <input id="submitLogin" class ="modalButton" type="submit" value="Submit" disabled/>
                         </div>
                     </form>
                 </div>
@@ -104,18 +63,18 @@
                     <form action="http://localhost:8081/register" method="post" onsubmit="checkRegisterForm(this)">
                         <div class="formItem">
                             <label class="labelItem" for="nickname">Nickname: </label>
-                            <input class="inputItem" name="nickname"/>
+                            <input id="regName" class="inputItem" name="nickname"/>
                         </div>
                         <div class="formItem">
                             <label class="labelItem" for="password">Password: </label>
-                            <input class="inputItem" type="password" name="password"/>
+                            <input id="pwd1" class="inputItem" type="password" name="password"/>
                         </div>
                         <div class="formItem">
                             <label class="labelItem" for="pwd2">Repeat Password: </label>
-                            <input class="inputItem" type="password" name="pwd2"/>
+                            <input id="pwd2" class="inputItem" type="password" name="pwd2"/>
                         </div>
                         <div class="formItem">
-                            <input class ="button" type="submit" value="Submit"/>
+                            <input id="submitReg" class ="modalButton" type="submit" value="Submit" disabled/>
                         </div>
                     </form>
                 </div>
@@ -124,31 +83,87 @@
         <main id="content">
             <div>
                 {{if .nickname}}
+                <style>
+                    #commentBlock{
+                        margin: 20px;
+                    }
+
+                    #contentInput{
+                        height: 100px;
+                    }
+
+                    #commentBlock *{
+                        margin: 20px;
+                        display: block;
+                        width: 30%;
+                    }
+                </style>
                 <div id="commentBlock">
                     <label for="comment">Post as {{.nickname}}: </label>
                     <input style="display: none" name="author" value="{{.nickname}}"/>
                     <input id="titleInput" name="title"/>
-                    <input id="contentInput" name="content"/>
+                    <textarea id="contentInput" type ="text" name="content"></textarea> 
                     <input class ="button" id="addArticleButton" type="button" value="Post article"/>
                 </div>
                 {{end}}
                 <div id="articles">
+                    <!-- {{if .nickname}}
+                        <style>
+                            .rateButtons{
+                                visibility:visible;
+                            };
+                        </style>
+                    {{else}}
+                        <style>
+                            .rateButtons{
+                                visibility:hidden;
+                            };
+                        </style>
+                    {{end}} -->
+                    {{if or .isAdmin .isModer}}
+                        <style>
+                            .editArticle{
+                                visibility:visible;
+                            };
+                        </style>
+                    {{else}}
+                    <style>
+                        .editArticle{
+                            visibility:hidden;
+                        };
+                    </style>
+                    {{end}}
                     {{range .payload }}
                     <div class="article" data-date="{{.CreationTime}}">
                         <a href="/article/{{.ID}}">
-                        <h2>{{.Title}}</h2>
+                        <h2 class="articleTitle">{{.Title}}</h2>
                         </a>
                         <p>{{.PrettyTime}}</p>
                         <p>created by {{.Author}}</p>
-                        <p>{{.Content}}</p>
+                        <p id="content{{.ID}}">{{.Content}}</p>
+                        <!-- <p>Rating:</p> -->
+                        <!-- <div class="rateButtons">
+                            <input class="likeButton" type="button" value="like" data-id="{{.ID}}">
+                            <input class="dislikeButton" type="button" value="dislike" data-id="{{.ID}}">
+                        </div> -->
+                        <div class="editArticle">
+                            <input class="editArticleButton" type="button" value="editArticle" data-id="{{.ID}}">
+                            <input class="deleteArticleButton" type="button" value="deleteArticle" data-id="{{.ID}}">
+                        </div>
                     </div>
                     {{end}}
+                    <div id="editModal" class="modal">
+                        <div class="modal-content">
+                            <span id="closeEdit" class="close">&times;</span>
+                            <textarea id="edition" value=""></textarea>
+                            <input id="submitEditionButton" value="submitEdition" type="button" data-id=""> 
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
         <footer>
         </footer>
-       
     </body>   
 </html>
 

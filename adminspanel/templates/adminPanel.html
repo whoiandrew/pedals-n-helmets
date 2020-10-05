@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Admin</title>
+        <link rel="stylesheet"  type="text/css" href="../assets/css/index.css">
+        <script type="text/javascript" src="../assets/jquey-3.5.1.js"></script>
+        <script type="text/javascript" src="../assets/scripts/adminPanel.js"></script>
+        <style>
+            @font-face {
+                font-family: "Open Sans Condensed";
+                src: url("../assets/fonts/OpenSansCondensed-Light.ttf");
+            }
+
+            html{
+                background-image: url("../assets/images/main-bg.png");
+                height: 100%;
+                background-position: center;
+                background-repeat: no-repeat;
+                background-size: cover;
+                background-attachment: fixed;
+                color: #ffffff;
+                font-family: "Open Sans Condensed";
+            }
+        </style>
+    </head>
+    <body>
+        {{range .users}}
+            <div class="usersCard" id="{{.Nickname}}Card">
+                <p>{{.Nickname}}</p>
+                <p>{{.Password}}</p>
+                <button class="deleteUser" type="button" value="{{.Nickname}}">Delete</button>
+            </div>
+        {{end}}
+    </body>
+</html>

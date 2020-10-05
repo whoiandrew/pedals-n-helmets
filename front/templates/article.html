@@ -4,27 +4,8 @@
         <meta charset="UTF-8">
         <title>Article</title>
         <link rel="stylesheet"  type="text/css" href="../assets/css/index.css">
-        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-        <script>
-            $(document).ready(function(){
-                $("#addCommentButton").on("click", function(){
-                    $.ajax({
-                        type: "POST",
-                        url: "http://localhost:8081/addComment",
-                        data: {
-                            articleId: $("#articleId").val(),
-                            author: $("#author").val(),
-                            content: $("#content").val()
-                        },
-                        dataType: "json",
-                        success: function(data) {
-                            $("#comments").prepend(`<div><p>${data.author}</p><p>${data.content}</p><p>${data.prettyTime}</p></div>`);
-                        }
-                    });  
-                             
-                });
-            });
-        </script>
+        <script type="text/javascript" src="../assets/jquery-3.5.1.js"></script>
+        <script type="text/javascript" src="../assets/scripts/article.js"></script>
     </head>
     <body>
         <p>{{.title}}</p>
